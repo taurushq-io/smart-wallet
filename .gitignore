@@ -19,3 +19,8 @@ docs/
 .certora_internal/
 
 node_modules/
+
+#drawio
+*.bkp
+
+docOut
