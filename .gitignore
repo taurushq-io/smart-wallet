@@ -17,3 +17,10 @@ docs/
 .VSCodeCounter/
 
 .certora_internal/
+
+node_modules/
+
+#drawio
+*.bkp
+
+docOut
