@@ -17,3 +17,5 @@ docs/
 .VSCodeCounter/
 
 .certora_internal/
+
+node_modules/
