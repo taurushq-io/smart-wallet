@@ -1,4 +1,4 @@
-> This project is a fork of Coibase Smart Wallet
+> This project is a fork of Coinbase Smart Wallet
 >
 > No changes have been made to the original code.
 
