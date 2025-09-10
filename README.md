@@ -1,3 +1,7 @@
+> This project is a fork of Coibase Smart Wallet
+>
+> No changes have been made to the original code.
+
 # Smart Wallet
 
 This repository contains code for a new, [ERC-4337](https://eips.ethereum.org/EIPS/eip-4337) compliant smart contract wallet from Coinbase. 
@@ -8,7 +12,7 @@ It supports
 - Cross-chain replayability for owner updates and other actions: sign once, update everywhere. 
 
 ## Multiple Owners
-Our smart wallet supports a practically unlimited number of concurrent owners (max 2^256). Each owner can transact independently, without sign off from any other owner. 
+These smart wallet supports a practically unlimited number of concurrent owners (max 2^256). Each owner can transact independently, without sign off from any other owner. 
 
 Owners are identified as `bytes` to allow both Ethereum address owners and passkey (Secp256r1) public key owners. 
 
@@ -78,14 +82,12 @@ Today, allowed are
 - MultiOwnable.removeOwnerAtIndex
 - UUPSUpgradeable.upgradeToAndCall
 
-## Deployments
-Factory and implementation are deployed via [Safe Singleton Factory](https://github.com/safe-global/safe-singleton-factory), which today will give the same address across 248 chains. See "Deploying" below for instructions on how to deploy to new chains. 
-| Version   | Factory Address                        |
-|-----------|-----------------------------------------|
-| 1 | [0x0BA5ED0c6AA8c49038F819E587E2633c4A9F428a](https://basescan.org/address/0x0BA5ED0c6AA8c49038F819E587E2633c4A9F428a) |
 
+
+## 
 
 ## Developing 
+
 After cloning the repo, run the tests using Forge, from [Foundry](https://github.com/foundry-rs/foundry?tab=readme-ov-file)
 ```bash
 forge test
@@ -108,5 +110,19 @@ Then run
 make deploy
 ```
 
-## Influences
+## Original documentation
+
+> Part of Coinbase Smart Wallet original documentation
+
+### Influences
+
 Much of the code in this repository started from Solady's [ERC4337](https://github.com/Vectorized/solady/blob/main/src/accounts/ERC4337.sol) implementation. We were also influenced by [DaimoAccount](https://github.com/daimo-eth/daimo/blob/master/packages/contract/src/DaimoAccount.sol), which pioneered using passkey signers on ERC-4337 accounts, and [LightAccount](https://github.com/alchemyplatform/light-account).
+
+### Deployments
+
+Factory and implementation are deployed via [Safe Singleton Factory](https://github.com/safe-global/safe-singleton-factory), which today will give the same address across 248 chains. See "Deploying" below for instructions on how to deploy to new chains. 
+
+| Version | Factory Address                                              |
+| ------- | ------------------------------------------------------------ |
+| 1       | [0x0BA5ED0c6AA8c49038F819E587E2633c4A9F428a](https://basescan.org/address/0x0BA5ED0c6AA8c49038F819E587E2633c4A9F428a) |
+
