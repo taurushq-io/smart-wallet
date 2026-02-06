@@ -6,7 +6,6 @@ import "./SmartWalletTestBase.sol";
 contract TestInitialize is SmartWalletTestBase {
     function testInitialize() public view {
         assert(account.isOwnerAddress(signer));
-        assert(account.isOwnerBytes(passkeyOwner));
     }
 
     function test_cannotInitImplementation() public {

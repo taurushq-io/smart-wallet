@@ -13,7 +13,7 @@ contract RemoveLastOwnerTest is RemoveOwnerBaseTest {
 
     function test_reverts_whenNotLastOwner() public {
         vm.prank(owner1Address);
-        mock.addOwnerPublicKey("x", "y");
+        mock.addOwnerAddress(address(0xdead));
         vm.expectRevert(abi.encodeWithSelector(MultiOwnable.NotLastOwner.selector, 2));
         _removeOwner();
     }

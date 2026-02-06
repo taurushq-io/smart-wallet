@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "webauthn-sol/../test/Utils.sol";
-
 import {MockEntryPoint} from "../mocks/MockEntryPoint.sol";
 import "./SmartWalletTestBase.sol";
 
@@ -44,38 +42,6 @@ contract TestValidateUserOp is SmartWalletTestBase {
         // Not entry point reverts.
         vm.expectRevert(MultiOwnable.Unauthorized.selector);
         account.validateUserOp(userOp, t.userOpHash, t.missingAccountFunds);
-    }
-
-    function test_succeedsWithPasskeySigner() public {
-        _TestTemps memory t;
-        t.userOpHash = keccak256("123");
-        WebAuthnInfo memory webAuthn = Utils.getWebAuthnStruct(t.userOpHash);
-
-        (bytes32 r, bytes32 s) = vm.signP256(passkeyPrivateKey, webAuthn.messageHash);
-        s = bytes32(Utils.normalizeS(uint256(s)));
-        bytes memory sig = abi.encode(
-            CoinbaseSmartWallet.SignatureWrapper({
-                ownerIndex: 1,
-                signatureData: abi.encode(
-                    WebAuthn.WebAuthnAuth({
-                        authenticatorData: webAuthn.authenticatorData,
-                        clientDataJSON: webAuthn.clientDataJSON,
-                        typeIndex: 1,
-                        challengeIndex: 23,
-                        r: uint256(r),
-                        s: uint256(s)
-                    })
-                )
-            })
-        );
-
-        vm.etch(account.entryPoint(), address(new MockEntryPoint()).code);
-        MockEntryPoint ep = MockEntryPoint(payable(account.entryPoint()));
-
-        UserOperation memory userOp;
-        // Success returns 0.
-        userOp.signature = sig;
-        assertEq(ep.validateUserOp(address(account), userOp, t.userOpHash, t.missingAccountFunds), 0);
     }
 
     function test_reverts_whenSelectorInvalidForReplayableNonceKey() public {

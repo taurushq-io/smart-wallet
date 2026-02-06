@@ -6,7 +6,6 @@ import "./SmartWalletTestBase.sol";
 contract TestCanSkipChainIdValidation is SmartWalletTestBase {
     bytes4[] approvedSelectors = [
         MultiOwnable.addOwnerAddress.selector,
-        MultiOwnable.addOwnerPublicKey.selector,
         MultiOwnable.removeOwnerAtIndex.selector,
         MultiOwnable.removeLastOwner.selector,
         UUPSUpgradeable.upgradeToAndCall.selector

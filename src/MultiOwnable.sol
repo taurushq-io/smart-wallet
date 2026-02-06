@@ -9,16 +9,12 @@ struct MultiOwnableStorage {
     uint256 nextOwnerIndex;
     /// @dev Tracks number of owners that have been removed.
     uint256 removedOwnersCount;
-    /// @dev Maps index to owner bytes, used to idenfitied owners via a uint256 index.
+    /// @dev Maps index to owner bytes, used to identify owners via a uint256 index.
     ///
-    ///      Some uses—-such as signature validation for secp256r1 public key owners—-
-    ///      requires the caller to assert the public key of the caller. To economize calldata,
-    ///      we allow an index to identify an owner, so that the full owner bytes do
+    ///      We allow an index to identify an owner, so that the full owner bytes do
     ///      not need to be passed.
     ///
-    ///      The `owner` bytes should either be
-    ///         - An ABI encoded Ethereum address
-    ///         - An ABI encoded public key
+    ///      The `owner` bytes should be an ABI encoded Ethereum address.
     mapping(uint256 index => bytes owner) ownerAtIndex;
     /// @dev Mapping of bytes to booleans indicating whether or not
     ///      bytes_ is an owner of this contract.
@@ -58,8 +54,7 @@ contract MultiOwnable {
     /// @param actualOwner   The actual owner at `index`.
     error WrongOwnerAtIndex(uint256 index, bytes expectedOwner, bytes actualOwner);
 
-    /// @notice Thrown when a provided owner is neither 64 bytes long (for public key)
-    ///         nor a ABI encoded address.
+    /// @notice Thrown when a provided owner is not a valid ABI encoded address (32 bytes).
     ///
     /// @param owner The invalid owner.
     error InvalidOwnerBytesLength(bytes owner);
@@ -102,13 +97,6 @@ contract MultiOwnable {
         _addOwnerAtIndex(abi.encode(owner), _getMultiOwnableStorage().nextOwnerIndex++);
     }
 
-    /// @notice Adds a new public-key owner.
-    ///
-    /// @param x The owner public key x coordinate.
-    /// @param y The owner public key y coordinate.
-    function addOwnerPublicKey(bytes32 x, bytes32 y) external virtual onlyOwner {
-        _addOwnerAtIndex(abi.encode(x, y), _getMultiOwnableStorage().nextOwnerIndex++);
-    }
 
     /// @notice Removes owner at the given `index`.
     ///
@@ -152,19 +140,10 @@ contract MultiOwnable {
         return _getMultiOwnableStorage().isOwner[abi.encode(account)];
     }
 
-    /// @notice Checks if the given `x`, `y` public key is registered as owner.
-    ///
-    /// @param x The public key x coordinate.
-    /// @param y The public key y coordinate.
-    ///
-    /// @return `true` if the account is an owner else `false`.
-    function isOwnerPublicKey(bytes32 x, bytes32 y) public view virtual returns (bool) {
-        return _getMultiOwnableStorage().isOwner[abi.encode(x, y)];
-    }
 
     /// @notice Checks if the given `account` bytes is registered as owner.
     ///
-    /// @param account The account, should be ABI encoded address or public key.
+    /// @param account The account, should be ABI encoded address.
     ///
     /// @return `true` if the account is an owner else `false`.
     function isOwnerBytes(bytes memory account) public view virtual returns (bool) {
@@ -207,18 +186,18 @@ contract MultiOwnable {
     /// @notice Initialize the owners of this contract.
     ///
     /// @dev Intended to be called contract is first deployed and never again.
-    /// @dev Reverts if a provided owner is neither 64 bytes long (for public key) nor a valid address.
+    /// @dev Reverts if a provided owner is not a valid ABI encoded address (32 bytes).
     ///
     /// @param owners The initial set of owners.
     function _initializeOwners(bytes[] memory owners) internal virtual {
         MultiOwnableStorage storage $ = _getMultiOwnableStorage();
         uint256 nextOwnerIndex_ = $.nextOwnerIndex;
         for (uint256 i; i < owners.length; i++) {
-            if (owners[i].length != 32 && owners[i].length != 64) {
+            if (owners[i].length != 32) {
                 revert InvalidOwnerBytesLength(owners[i]);
             }
 
-            if (owners[i].length == 32 && uint256(bytes32(owners[i])) > type(uint160).max) {
+            if (uint256(bytes32(owners[i])) > type(uint160).max) {
                 revert InvalidEthereumAddressOwner(owners[i]);
             }
 

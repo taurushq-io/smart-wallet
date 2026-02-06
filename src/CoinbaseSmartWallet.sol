@@ -7,7 +7,6 @@ import {UserOperation, UserOperationLib} from "account-abstraction/interfaces/Us
 import {Receiver} from "solady/accounts/Receiver.sol";
 import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 import {UUPSUpgradeable} from "solady/utils/UUPSUpgradeable.sol";
-import {WebAuthn} from "webauthn-sol/WebAuthn.sol";
 
 import {ERC1271} from "./ERC1271.sol";
 import {MultiOwnable} from "./MultiOwnable.sol";
@@ -25,8 +24,7 @@ contract CoinbaseSmartWallet is ERC1271, IAccount, MultiOwnable, UUPSUpgradeable
     struct SignatureWrapper {
         /// @dev The index of the owner that signed, see `MultiOwnable.ownerAtIndex`
         uint256 ownerIndex;
-        /// @dev If `MultiOwnable.ownerAtIndex` is an Ethereum address, this should be `abi.encodePacked(r, s, v)`
-        ///      If `MultiOwnable.ownerAtIndex` is a public key, this should be `abi.encode(WebAuthnAuth)`.
+        /// @dev The signature data should be `abi.encodePacked(r, s, v)` for Ethereum address owners.
         bytes signatureData;
     }
 
@@ -280,8 +278,7 @@ contract CoinbaseSmartWallet is ERC1271, IAccount, MultiOwnable, UUPSUpgradeable
     /// @return `true` is the function selector is allowed to skip the chain ID validation, else `false`.
     function canSkipChainIdValidation(bytes4 functionSelector) public pure returns (bool) {
         if (
-            functionSelector == MultiOwnable.addOwnerPublicKey.selector
-                || functionSelector == MultiOwnable.addOwnerAddress.selector
+            functionSelector == MultiOwnable.addOwnerAddress.selector
                 || functionSelector == MultiOwnable.removeOwnerAtIndex.selector
                 || functionSelector == MultiOwnable.removeLastOwner.selector
                 || functionSelector == UUPSUpgradeable.upgradeToAndCall.selector
@@ -319,30 +316,22 @@ contract CoinbaseSmartWallet is ERC1271, IAccount, MultiOwnable, UUPSUpgradeable
         SignatureWrapper memory sigWrapper = abi.decode(signature, (SignatureWrapper));
         bytes memory ownerBytes = ownerAtIndex(sigWrapper.ownerIndex);
 
-        if (ownerBytes.length == 32) {
-            if (uint256(bytes32(ownerBytes)) > type(uint160).max) {
-                // technically should be impossible given owners can only be added with
-                // addOwnerAddress and addOwnerPublicKey, but we leave incase of future changes.
-                revert InvalidEthereumAddressOwner(ownerBytes);
-            }
-
-            address owner;
-            assembly ("memory-safe") {
-                owner := mload(add(ownerBytes, 32))
-            }
-
-            return SignatureCheckerLib.isValidSignatureNow(owner, hash, sigWrapper.signatureData);
+        if (ownerBytes.length != 32) {
+            revert InvalidOwnerBytesLength(ownerBytes);
         }
 
-        if (ownerBytes.length == 64) {
-            (uint256 x, uint256 y) = abi.decode(ownerBytes, (uint256, uint256));
-
-            WebAuthn.WebAuthnAuth memory auth = abi.decode(sigWrapper.signatureData, (WebAuthn.WebAuthnAuth));
-
-            return WebAuthn.verify({challenge: abi.encode(hash), requireUV: false, webAuthnAuth: auth, x: x, y: y});
+        if (uint256(bytes32(ownerBytes)) > type(uint160).max) {
+            // technically should be impossible given owners can only be added with
+            // addOwnerAddress, but we leave in case of future changes.
+            revert InvalidEthereumAddressOwner(ownerBytes);
         }
 
-        revert InvalidOwnerBytesLength(ownerBytes);
+        address owner;
+        assembly ("memory-safe") {
+            owner := mload(add(ownerBytes, 32))
+        }
+
+        return SignatureCheckerLib.isValidSignatureNow(owner, hash, sigWrapper.signatureData);
     }
 
     /// @inheritdoc UUPSUpgradeable

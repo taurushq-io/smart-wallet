@@ -1,28 +1,27 @@
 > This project is a fork of Coinbase Smart Wallet
 >
-> No changes have been made to the original code.
+> Passkey (secp256r1) owner support has been removed. Only Ethereum address owners are supported.
 
 # Smart Wallet
 
 This repository contains code for a new, [ERC-4337](https://eips.ethereum.org/EIPS/eip-4337) compliant smart contract wallet from Coinbase. 
 
-It supports 
-- Multiple owners
-- Passkey owners and Ethereum address owners
-- Cross-chain replayability for owner updates and other actions: sign once, update everywhere. 
+It supports
+- Multiple owners (Ethereum address owners only)
+- Cross-chain replayability for owner updates and other actions: sign once, update everywhere.
 
 ## Technical
 
 ### Multiple Owners
 
-These smart wallet supports a practically unlimited number of concurrent owners (max 2^256). Each owner can transact independently, without sign off from any other owner. 
+These smart wallet supports a practically unlimited number of concurrent owners (max 2^256). Each owner can transact independently, without sign off from any other owner.
 
-Owners are identified as `bytes` to allow both Ethereum address owners and passkey (Secp256r1) public key owners. 
+Owners are identified as `bytes` (ABI encoded Ethereum addresses).
 
-### Passkey owners and Ethereum address owners
-Ethereum address owners can call directly to the smart contract wallet to transact and also transact via user operations. 
+### Ethereum address owners
+Ethereum address owners can call directly to the smart contract wallet to transact and also transact via user operations.
 
-In the ERC-4337 context, we expect `UserOperation.signature` to be the ABI encoding of a `SignatureWrapper` struct 
+In the ERC-4337 context, we expect `UserOperation.signature` to be the ABI encoding of a `SignatureWrapper` struct
 ```solidity
 struct SignatureWrapper {
     uint8 ownerIndex;
@@ -30,13 +29,9 @@ struct SignatureWrapper {
 }
 ```
 
-Owner index identifies the owner who signed the user operation. This must be passed because secp256r1 verifiers require the public key as an input. This differs from `ecrecover`, which returns the signer address.
+Owner index identifies the owner who signed the user operation.
 
-We pass an `ownerIndex` rather than the public key itself to optimize for calldata, which is currently the main cost driver on Ethereum layer 2 rollups, like Base. 
-
-If the signer is an Ethereum address, `signatureData` should be the packed ABI encoding of the `r`, `s`, and `v` signature values. 
-
-If the signer is a secp256r1 public key, `signatureData` should be the the ABI encoding of a [`WebAuthnAuth`](https://github.com/base-org/webauthn-sol/blob/main/src/WebAuthn.sol#L15-L34) struct. See [webauthn-sol](https://github.com/base-org/webauthn-sol) for more details. 
+`signatureData` should be the packed ABI encoding of the `r`, `s`, and `v` signature values.
 
 ### Cross-chain replayability 
 If a user changes an owner or upgrade their smart wallet, they likely want this change applied to all instances of your smart wallet, across various chains. Our smart wallet allows users to sign a single user operation which can be permissionlessly replayed on other chains. 
@@ -77,12 +72,10 @@ function executeWithoutChainIdValidation(bytes calldata data) public payable vir
 
 `canSkipChainIdValidation` can be used to check which functions can be called.
 
-Today, allowed are 
-- MultiOwnable.addOwnerPublicKey
+Today, allowed are
 - MultiOwnable.addOwnerAddress
-- MultiOwnable.addOwnerAddressAtIndex
-- MultiOwnable.addOwnerPublicKeyAtIndex
 - MultiOwnable.removeOwnerAtIndex
+- MultiOwnable.removeLastOwner
 - UUPSUpgradeable.upgradeToAndCall
 
 ## Architecture
@@ -155,7 +148,7 @@ Initializes the account with the provided `owners`.
 
 | Name   | Type    | Description                                                  |
 | ------ | ------- | ------------------------------------------------------------ |
-| owners | bytes[] | Array of initial owners for this account. Each item should be an ABI-encoded Ethereum address (32 bytes with 12 leading zero bytes) or a 64-byte public key. |
+| owners | bytes[] | Array of initial owners for this account. Each item should be an ABI-encoded Ethereum address (32 bytes with 12 leading zero bytes). |
 
 ------
 
@@ -407,7 +400,7 @@ Deployed as an ERC-1967 proxy with `this.implementation` as its implementation.
 
 | Name   | Type    | Description                                                  |
 | ------ | ------- | ------------------------------------------------------------ |
-| owners | bytes[] | Array of initial owners. Each item should be an ABI-encoded address or 64-byte public key. |
+| owners | bytes[] | Array of initial owners. Each item should be an ABI-encoded Ethereum address. |
 | nonce  | uint256 | A caller-defined nonce that allows multiple accounts with the same `owners` to exist at different addresses. |
 
 **Return Values:**
@@ -430,7 +423,7 @@ Get the predicted deterministic address of a `CoinbaseSmartWallet` that would be
 
 | Name   | Type    | Description                                                  |
 | ------ | ------- | ------------------------------------------------------------ |
-| owners | bytes[] | Array of initial owners. Each item should be an ABI-encoded address or 64-byte public key. |
+| owners | bytes[] | Array of initial owners. Each item should be an ABI-encoded Ethereum address. |
 | nonce  | uint256 | The nonce provided to `createAccount()`.                     |
 
 **Return Values:**
@@ -485,7 +478,7 @@ make deploy
 
 ### Influences
 
-Much of the code in this repository started from Solady's [ERC4337](https://github.com/Vectorized/solady/blob/main/src/accounts/ERC4337.sol) implementation. We were also influenced by [DaimoAccount](https://github.com/daimo-eth/daimo/blob/master/packages/contract/src/DaimoAccount.sol), which pioneered using passkey signers on ERC-4337 accounts, and [LightAccount](https://github.com/alchemyplatform/light-account).
+Much of the code in this repository started from Solady's [ERC4337](https://github.com/Vectorized/solady/blob/main/src/accounts/ERC4337.sol) implementation. We were also influenced by [DaimoAccount](https://github.com/daimo-eth/daimo/blob/master/packages/contract/src/DaimoAccount.sol) and [LightAccount](https://github.com/alchemyplatform/light-account).
 
 ### Deployments
 
