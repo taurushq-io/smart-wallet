@@ -99,6 +99,8 @@ Today, allowed are
 |            └            | executeWithoutChainIdValidation |                         External ❗️                         |       💵        |      onlyEntryPoint       |
 |            └            |             execute             |                         External ❗️                         |       💵        |   onlyEntryPointOrOwner   |
 |            └            |          executeBatch           |                         External ❗️                         |       💵        |   onlyEntryPointOrOwner   |
+|            └            |             deploy              |                         External ❗️                         |       💵        |   onlyEntryPointOrOwner   |
+|            └            |      deployDeterministic        |                         External ❗️                         |       💵        |   onlyEntryPointOrOwner   |
 |            └            |           entryPoint            |                          Public ❗️                          |                |            NO❗️            |
 |            └            |   getUserOpHashWithoutChainId   |                          Public ❗️                          |                |            NO❗️            |
 |            └            |         implementation          |                          Public ❗️                          |                |            NO❗️            |
@@ -252,6 +254,67 @@ Executes multiple calls in a batch from this account.
 | Name  | Type   | Description                |
 | ----- | ------ | -------------------------- |
 | calls | Call[] | Array of calls to execute. |
+
+------
+
+##### deploy
+
+```solidity
+function deploy(uint256 value, bytes calldata bytecode)
+    external payable virtual onlyEntryPointOrOwner returns (address deployed)
+```
+
+Deploys a new contract using the `CREATE` opcode. The smart wallet is the deployer, so `msg.sender` in the new contract's constructor will be this wallet's address.
+
+**Behavior:**
+
+- Can only be called by the EntryPoint or an owner (including the account itself).
+- Reverts with `DeploymentFailed` if the deployment fails.
+- Emits `ContractDeployed(deployed, value)` on success.
+
+**Parameters:**
+
+| Name     | Type    | Description                                     |
+| -------- | ------- | ----------------------------------------------- |
+| value    | uint256 | The ETH value to send to the deployed contract. |
+| bytecode | bytes   | The creation bytecode of the contract to deploy. |
+
+**Return Values:**
+
+| Name     | Type    | Description                              |
+| -------- | ------- | ---------------------------------------- |
+| deployed | address | The address of the newly deployed contract. |
+
+------
+
+##### deployDeterministic
+
+```solidity
+function deployDeterministic(uint256 value, bytes calldata bytecode, bytes32 salt)
+    external payable virtual onlyEntryPointOrOwner returns (address deployed)
+```
+
+Deploys a new contract using the `CREATE2` opcode for deterministic address computation. The deployed address is: `keccak256(0xff ++ walletAddress ++ salt ++ keccak256(bytecode))`.
+
+**Behavior:**
+
+- Can only be called by the EntryPoint or an owner (including the account itself).
+- Reverts with `DeploymentFailed` if the deployment fails (e.g., same salt used twice).
+- Emits `ContractDeployed(deployed, value)` on success.
+
+**Parameters:**
+
+| Name     | Type    | Description                                     |
+| -------- | ------- | ----------------------------------------------- |
+| value    | uint256 | The ETH value to send to the deployed contract. |
+| bytecode | bytes   | The creation bytecode of the contract to deploy. |
+| salt     | bytes32 | The salt for deterministic address computation.  |
+
+**Return Values:**
+
+| Name     | Type    | Description                              |
+| -------- | ------- | ---------------------------------------- |
+| deployed | address | The address of the newly deployed contract. |
 
 ------
 

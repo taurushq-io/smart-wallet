@@ -70,6 +70,15 @@ contract CoinbaseSmartWallet is ERC1271, IAccount, MultiOwnable, UUPSUpgradeable
     /// @param implementation The address of the implementation that has no code.
     error InvalidImplementation(address implementation);
 
+    /// @notice Thrown when a contract deployment fails.
+    error DeploymentFailed();
+
+    /// @notice Emitted when a contract is deployed via this wallet.
+    ///
+    /// @param deployed The address of the deployed contract.
+    /// @param value The ETH value sent to the deployed contract.
+    event ContractDeployed(address indexed deployed, uint256 value);
+
     /// @notice Reverts if the caller is not the EntryPoint.
     modifier onlyEntryPoint() virtual {
         if (msg.sender != entryPoint()) {
@@ -120,8 +129,7 @@ contract CoinbaseSmartWallet is ERC1271, IAccount, MultiOwnable, UUPSUpgradeable
     /// @dev Reverts if the account has had at least one owner, i.e. has been initialized.
     ///
     /// @param owners Array of initial owners for this account. Each item should be
-    ///               an ABI encoded Ethereum address, i.e. 32 bytes with 12 leading 0 bytes,
-    ///               or a 64 byte public key.
+    ///               an ABI encoded Ethereum address, i.e. 32 bytes with 12 leading 0 bytes.
     function initialize(bytes[] calldata owners) external payable virtual {
         if (nextOwnerIndex() != 0) {
             revert Initialized();
@@ -241,6 +249,62 @@ contract CoinbaseSmartWallet is ERC1271, IAccount, MultiOwnable, UUPSUpgradeable
         for (uint256 i; i < calls.length; i++) {
             _call(calls[i].target, calls[i].value, calls[i].data);
         }
+    }
+
+    /// @notice Deploys a contract using the CREATE opcode.
+    ///
+    /// @dev Can only be called by the Entrypoint or an owner of this account (including itself).
+    /// @dev The smart wallet is the deployer, so `msg.sender` in the new contract's constructor
+    ///      will be this wallet's address.
+    ///
+    /// @param value    The ETH value to send to the deployed contract.
+    /// @param bytecode The creation bytecode of the contract to deploy.
+    ///
+    /// @return deployed The address of the newly deployed contract.
+    function deploy(uint256 value, bytes calldata bytecode)
+        external
+        payable
+        virtual
+        onlyEntryPointOrOwner
+        returns (address deployed)
+    {
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            calldatacopy(ptr, bytecode.offset, bytecode.length)
+            mstore(0x40, add(ptr, bytecode.length))
+            deployed := create(value, ptr, bytecode.length)
+        }
+        if (deployed == address(0)) revert DeploymentFailed();
+        emit ContractDeployed(deployed, value);
+    }
+
+    /// @notice Deploys a contract using the CREATE2 opcode for deterministic addresses.
+    ///
+    /// @dev Can only be called by the Entrypoint or an owner of this account (including itself).
+    /// @dev The smart wallet is the deployer, so `msg.sender` in the new contract's constructor
+    ///      will be this wallet's address.
+    /// @dev The deployed address is: keccak256(0xff ++ walletAddress ++ salt ++ keccak256(bytecode))
+    ///
+    /// @param value    The ETH value to send to the deployed contract.
+    /// @param bytecode The creation bytecode of the contract to deploy.
+    /// @param salt     The salt for deterministic address computation.
+    ///
+    /// @return deployed The address of the newly deployed contract.
+    function deployDeterministic(uint256 value, bytes calldata bytecode, bytes32 salt)
+        external
+        payable
+        virtual
+        onlyEntryPointOrOwner
+        returns (address deployed)
+    {
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            calldatacopy(ptr, bytecode.offset, bytecode.length)
+            mstore(0x40, add(ptr, bytecode.length))
+            deployed := create2(value, ptr, bytecode.length, salt)
+        }
+        if (deployed == address(0)) revert DeploymentFailed();
+        emit ContractDeployed(deployed, value);
     }
 
     /// @notice Returns the address of the EntryPoint v0.6.

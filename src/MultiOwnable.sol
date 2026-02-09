@@ -97,7 +97,6 @@ contract MultiOwnable {
         _addOwnerAtIndex(abi.encode(owner), _getMultiOwnableStorage().nextOwnerIndex++);
     }
 
-
     /// @notice Removes owner at the given `index`.
     ///
     /// @dev Reverts if the owner is not registered at `index`.
@@ -139,7 +138,6 @@ contract MultiOwnable {
     function isOwnerAddress(address account) public view virtual returns (bool) {
         return _getMultiOwnableStorage().isOwner[abi.encode(account)];
     }
-
 
     /// @notice Checks if the given `account` bytes is registered as owner.
     ///
