@@ -1,6 +1,6 @@
 {
-  "e2e_transfer_erc20_baseAccount": "142302",
-  "e2e_transfer_erc20_eoa": "39910",
-  "e2e_transfer_native_baseAccount": "134635",
+  "e2e_transfer_erc20_baseAccount": "129325",
+  "e2e_transfer_erc20_eoa": "39909",
+  "e2e_transfer_native_baseAccount": "122080",
   "e2e_transfer_native_eoa": "9338"
 }
