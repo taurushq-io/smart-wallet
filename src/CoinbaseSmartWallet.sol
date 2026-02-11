@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.28;
 
 import {IAccount} from "account-abstraction/interfaces/IAccount.sol";
 
-import {UserOperation, UserOperationLib} from "account-abstraction/interfaces/UserOperation.sol";
+import {PackedUserOperation} from "account-abstraction/interfaces/PackedUserOperation.sol";
+import {UserOperationLib} from "account-abstraction/core/UserOperationLib.sol";
 import {Receiver} from "solady/accounts/Receiver.sol";
 import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 import {UUPSUpgradeable} from "solady/utils/UUPSUpgradeable.sol";
@@ -157,7 +158,7 @@ contract CoinbaseSmartWallet is ERC1271, IAccount, MultiOwnable, UUPSUpgradeable
     /// @return validationData The encoded `ValidationData` structure:
     ///                        `(uint256(validAfter) << (160 + 48)) | (uint256(validUntil) << 160) | (success ? 0 : 1)`
     ///                        where `validUntil` is 0 (indefinite) and `validAfter` is 0.
-    function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
+    function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
         external
         virtual
         onlyEntryPoint
@@ -268,6 +269,7 @@ contract CoinbaseSmartWallet is ERC1271, IAccount, MultiOwnable, UUPSUpgradeable
         onlyEntryPointOrOwner
         returns (address deployed)
     {
+        if (bytecode.length == 0) revert DeploymentFailed();
         assembly ("memory-safe") {
             let ptr := mload(0x40)
             calldatacopy(ptr, bytecode.offset, bytecode.length)
@@ -307,23 +309,23 @@ contract CoinbaseSmartWallet is ERC1271, IAccount, MultiOwnable, UUPSUpgradeable
         emit ContractDeployed(deployed, value);
     }
 
-    /// @notice Returns the address of the EntryPoint v0.6.
+    /// @notice Returns the address of the EntryPoint v0.9.
     ///
-    /// @return The address of the EntryPoint v0.6
+    /// @return The address of the EntryPoint v0.9
     function entryPoint() public view virtual returns (address) {
-        return 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
+        return 0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108;
     }
 
-    /// @notice Computes the hash of the `UserOperation` in the same way as EntryPoint v0.6, but
+    /// @notice Computes the hash of the `PackedUserOperation` in the same way as EntryPoint v0.9, but
     ///         leaves out the chain ID.
     ///
     /// @dev This allows accounts to sign a hash that can be used on many chains.
     ///
-    /// @param userOp The `UserOperation` to compute the hash for.
+    /// @param userOp The `PackedUserOperation` to compute the hash for.
     ///
-    /// @return The `UserOperation` hash, which does not depend on chain ID.
-    function getUserOpHashWithoutChainId(UserOperation calldata userOp) public view virtual returns (bytes32) {
-        return keccak256(abi.encode(UserOperationLib.hash(userOp), entryPoint()));
+    /// @return The `PackedUserOperation` hash, which does not depend on chain ID.
+    function getUserOpHashWithoutChainId(PackedUserOperation calldata userOp) public view virtual returns (bytes32) {
+        return keccak256(abi.encode(UserOperationLib.hash(userOp, bytes32(0)), entryPoint()));
     }
 
     /// @notice Returns the implementation of the ERC1967 proxy.

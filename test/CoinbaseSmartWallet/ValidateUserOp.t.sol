@@ -29,7 +29,7 @@ contract TestValidateUserOp is SmartWalletTestBase {
         vm.etch(account.entryPoint(), address(new MockEntryPoint()).code);
         MockEntryPoint ep = MockEntryPoint(payable(account.entryPoint()));
 
-        UserOperation memory userOp;
+        PackedUserOperation memory userOp;
         // Success returns 0.
         userOp.signature = abi.encode(CoinbaseSmartWallet.SignatureWrapper(0, abi.encodePacked(t.r, t.s, t.v)));
         assertEq(ep.validateUserOp(address(account), userOp, t.userOpHash, t.missingAccountFunds), 0);
@@ -45,7 +45,7 @@ contract TestValidateUserOp is SmartWalletTestBase {
     }
 
     function test_reverts_whenSelectorInvalidForReplayableNonceKey() public {
-        UserOperation memory userOp;
+        PackedUserOperation memory userOp;
         userOp.nonce = 0;
         userOp.callData = abi.encodeWithSelector(CoinbaseSmartWallet.executeWithoutChainIdValidation.selector, "");
         vm.startPrank(account.entryPoint());
@@ -54,7 +54,7 @@ contract TestValidateUserOp is SmartWalletTestBase {
     }
 
     function test_reverts_whenReplayableNonceKeyInvalidForSelector() public {
-        UserOperation memory userOp;
+        PackedUserOperation memory userOp;
         userOp.nonce = account.REPLAYABLE_NONCE_KEY() << 64;
         userOp.callData = abi.encodeWithSelector(CoinbaseSmartWallet.execute.selector, "");
         vm.startPrank(account.entryPoint());
@@ -71,7 +71,7 @@ contract TestValidateUserOp is SmartWalletTestBase {
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeWithSelector(UUPSUpgradeable.upgradeToAndCall.selector, emptyImplementation, "");
 
-        UserOperation memory userOp;
+        PackedUserOperation memory userOp;
         userOp.nonce = account.REPLAYABLE_NONCE_KEY() << 64;
         userOp.callData = abi.encodeWithSelector(CoinbaseSmartWallet.executeWithoutChainIdValidation.selector, calls);
         userOp.signature =
@@ -91,7 +91,7 @@ contract TestValidateUserOp is SmartWalletTestBase {
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeWithSelector(UUPSUpgradeable.upgradeToAndCall.selector, validImplementation, "");
 
-        UserOperation memory userOp;
+        PackedUserOperation memory userOp;
         userOp.nonce = account.REPLAYABLE_NONCE_KEY() << 64;
         userOp.callData = abi.encodeWithSelector(CoinbaseSmartWallet.executeWithoutChainIdValidation.selector, calls);
         userOp.signature =

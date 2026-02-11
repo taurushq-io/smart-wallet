@@ -191,12 +191,12 @@ contract MultiOwnable {
         MultiOwnableStorage storage $ = _getMultiOwnableStorage();
         uint256 nextOwnerIndex_ = $.nextOwnerIndex;
         for (uint256 i; i < owners.length; i++) {
-            if (owners[i].length != 32) {
+            if (owners[i].length == 32) {
+                if (uint256(bytes32(owners[i])) > type(uint160).max) {
+                    revert InvalidEthereumAddressOwner(owners[i]);
+                }
+            } else if (owners[i].length != 64) {
                 revert InvalidOwnerBytesLength(owners[i]);
-            }
-
-            if (uint256(bytes32(owners[i])) > type(uint160).max) {
-                revert InvalidEthereumAddressOwner(owners[i]);
             }
 
             _addOwnerAtIndex(owners[i], nextOwnerIndex_++);

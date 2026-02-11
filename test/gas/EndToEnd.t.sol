@@ -2,7 +2,8 @@
 pragma solidity ^0.8.0;
 
 import {console2} from "forge-std/Test.sol";
-import {UserOperation} from "account-abstraction/interfaces/UserOperation.sol";
+import {PackedUserOperation} from "account-abstraction/interfaces/PackedUserOperation.sol";
+import {EntryPoint} from "account-abstraction/core/EntryPoint.sol";
 
 import {CoinbaseSmartWallet} from "../../src/CoinbaseSmartWallet.sol";
 import {CoinbaseSmartWalletFactory} from "../../src/CoinbaseSmartWalletFactory.sol";
@@ -10,7 +11,6 @@ import {MockERC20} from "../../lib/solady/test/utils/mocks/MockERC20.sol";
 
 import {MockTarget} from "../mocks/MockTarget.sol";
 import {SmartWalletTestBase} from "../CoinbaseSmartWallet/SmartWalletTestBase.sol";
-import {Static} from "../CoinbaseSmartWallet/Static.sol";
 
 /// @title EndToEndTest
 /// @notice Gas comparison tests between ERC-4337 Base Account and EOA transactions
@@ -25,7 +25,8 @@ contract EndToEndTest is SmartWalletTestBase {
 
     function setUp() public override {
         // Deploy EntryPoint at canonical address
-        vm.etch(0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789, Static.ENTRY_POINT_BYTES);
+        EntryPoint ep = new EntryPoint();
+        vm.etch(0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108, address(ep).code);
 
         // Deploy smart wallet infrastructure
         CoinbaseSmartWallet implementation = new CoinbaseSmartWallet();
@@ -48,15 +49,15 @@ contract EndToEndTest is SmartWalletTestBase {
 
         target = new MockTarget();
     }
-    
+
     // Native ETH Transfer - Base Account
     function test_transfer_native_baseAccount() public {
         // Dust recipient to avoid gas changes for first non-zero balance
         vm.deal(address(0x1234), 1 wei);
-        
+
         // Prepare UserOperation for native ETH transfer
         userOpCalldata = abi.encodeCall(CoinbaseSmartWallet.execute, (address(0x1234), 1 ether, ""));
-        UserOperation memory op = _getUserOpWithSignature();
+        PackedUserOperation memory op = _getUserOpWithSignature();
 
         // Measure calldata size
         bytes memory handleOpsCalldata = abi.encodeCall(entryPoint.handleOps, (_makeOpsArray(op), payable(bundler)));
@@ -73,7 +74,7 @@ contract EndToEndTest is SmartWalletTestBase {
     function test_transfer_native_eoa() public {
         // Dust recipient to avoid gas changes for first non-zero balance
         vm.deal(address(0x1234), 1 wei);
-        
+
         console2.log("test_transfer_native EOA calldata size:", uint256(0));
 
         // Execute and measure gas
@@ -83,7 +84,7 @@ contract EndToEndTest is SmartWalletTestBase {
         uint256 gasUsed = vm.stopSnapshotGas();
         console2.log("test_transfer_native EOA gas:", gasUsed);
     }
-    
+
     // ERC20 Transfer - Base Account
     function test_transfer_erc20_baseAccount() public {
         // Dust recipient to avoid gas changes for first non-zero balance
@@ -94,7 +95,7 @@ contract EndToEndTest is SmartWalletTestBase {
         userOpCalldata = abi.encodeCall(
             CoinbaseSmartWallet.execute, (address(usdc), 0, abi.encodeCall(usdc.transfer, (address(0x5678), 100e6)))
         );
-        UserOperation memory op = _getUserOpWithSignature();
+        PackedUserOperation memory op = _getUserOpWithSignature();
 
         // Measure calldata size
         bytes memory handleOpsCalldata = abi.encodeCall(entryPoint.handleOps, (_makeOpsArray(op), payable(bundler)));
@@ -112,7 +113,7 @@ contract EndToEndTest is SmartWalletTestBase {
         // Dust recipient to avoid gas changes for first non-zero balance
         vm.deal(address(0x5678), 1 wei);
         usdc.mint(address(0x5678), 1 wei);
-        
+
         // Measure calldata size
         bytes memory eoaCalldata = abi.encodeCall(usdc.transfer, (address(0x5678), 100e6));
         console2.log("test_transfer_erc20 EOA calldata size:", eoaCalldata.length);
@@ -126,16 +127,15 @@ contract EndToEndTest is SmartWalletTestBase {
     }
 
     // Helper Functions
-    // Creates an array containing a single UserOperation
-    function _makeOpsArray(UserOperation memory op) internal pure returns (UserOperation[] memory) {
-        UserOperation[] memory ops = new UserOperation[](1);
+    // Creates an array containing a single PackedUserOperation
+    function _makeOpsArray(PackedUserOperation memory op) internal pure returns (PackedUserOperation[] memory) {
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
         ops[0] = op;
         return ops;
     }
 
-    // Signs a UserOperation with the configured signer
-    // Overrides the parent implementation to use the configured signer
-    function _sign(UserOperation memory userOp) internal view override returns (bytes memory signature) {
+    // Signs a PackedUserOperation with the configured signer
+    function _sign(PackedUserOperation memory userOp) internal view override returns (bytes memory signature) {
         bytes32 toSign = entryPoint.getUserOpHash(userOp);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, toSign);
         signature = abi.encode(CoinbaseSmartWallet.SignatureWrapper(0, abi.encodePacked(r, s, v)));
